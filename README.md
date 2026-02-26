@@ -1,73 +1,126 @@
-# React + TypeScript + Vite
+# DEERA Internal ERP Frontend (PWA POS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend aplikasi internal POS untuk operasional grosir DEERA.
+Project ini fokus ke **kecepatan input kasir**, **stabilitas di perangkat Android**, dan **integrasi penuh ke Supabase**.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React + Vite + TypeScript
+- Tailwind CSS
+- Zustand (state management)
+- Supabase JS (Auth, Database, Storage, RPC)
+- html5-qrcode (scanner QR/barcode)
+- dayjs (tanggal)
+- vite-plugin-pwa (installable PWA)
 
-## React Compiler
+## Product Context
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Internal system (bukan public app)
+- Target device: Android phone
+- Printer: Bluetooth thermal
+- Kondisi lapangan: transaksi cepat, internet kadang tidak stabil
+- Prinsip utama: **Speed first, Stability second, Simplicity third**
 
-## Expanding the ESLint configuration
+## Supabase Data Architecture (Ringkas)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Master Tables
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- `products`: master produk, barcode, harga jual, HPP default, dan `image_url`
+- `stores`: master toko/gudang
+- `stock`: stok per produk per store (unique `product_id + store_id`)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Transaction Tables
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- `sales`: header transaksi
+- `sale_items`: detail item transaksi, menyimpan `hpp_at_sale` untuk historical profit
+- `stock_transfers` + `stock_transfer_items`: mutasi antar store
+- `damaged_stock`: catatan barang rusak
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Accounting & Control
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- `accounting_periods`: kontrol lock periode
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### Core RPC
+
+- `create_sale(...)`
+- `delete_sale(p_sale_id)`
+- `transfer_stock(from_store, to_store, items_jsonb)`
+- `mark_damaged_stock(...)`
+- `is_date_locked(p_date)`
+- `close_current_period(p_end_date)`
+
+## POS Flow (Current MVP)
+
+1. Scan barcode via kamera belakang
+2. Scanner auto-stop setelah 1 scan
+3. Beep + vibrate sebagai feedback user
+4. Lookup produk ke Supabase (`products` aktif)
+5. Item masuk ke cart Zustand
+6. Jika barcode sama, qty auto increment
+
+## Current Status
+
+### Backend
+
+Sudah siap dan stabil di Supabase:
+
+- Sales engine (anti minus + historical HPP)
+- Transfer engine
+- Damaged stock flow
+- Reporting views (profit, ledger, summary)
+- Period lock enforcement
+
+### Frontend
+
+MVP POS berjalan:
+
+- Scanner stabil dan usable untuk flow pasar
+- Real barcode → real Supabase lookup → real cart update
+- Beep/vibrate feedback aktif
+
+Belum dikerjakan (next phase):
+
+- Simpan transaksi `sales` dari UI checkout
+- Discount flow
+- Product preload cache
+- Offline mode / sync strategy
+- EAN-13 optimization
+- Period filter integration (`period_id`)
+
+## Product Image Convention
+
+- Bucket Supabase Storage: `product-images`
+- Naming file: `{product_id}.jpg`
+- URL final disimpan di `products.image_url`
+
+## Getting Started
+
+1. Install dependency:
+
+   ```bash
+   npm install
+   ```
+
+2. Buat `.env`:
+
+   ```bash
+   VITE_SUPABASE_URL=...
+   VITE_SUPABASE_ANON_KEY=...
+   ```
+
+3. Jalankan dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Build production:
+
+   ```bash
+   npm run build
+   ```
+
+## Notes
+
+- Backend logic utama sengaja ditempatkan di Supabase RPC agar frontend tetap tipis dan cepat.
+- Frontend berperan sebagai client input/operasional POS dengan UX yang dioptimalkan untuk 1 tangan.
