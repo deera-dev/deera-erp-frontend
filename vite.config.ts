@@ -33,7 +33,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@store": path.resolve(__dirname, "./src/store"),
-      "@modules": path.resolve(__dirname, "./src/modules"),
+      "@features": path.resolve(__dirname, "./src/features"),
       "@components": path.resolve(__dirname, "./src/components"),
       "@lib": path.resolve(__dirname, "./src/lib"),
       "@types": path.resolve(__dirname, "./src/types"),
